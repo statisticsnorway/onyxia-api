@@ -11,9 +11,10 @@
         "type": "KUBERNETES",
         "initScript": "https://git.lab.sspcloud.fr/innovation/plateforme-onyxia/services-ressources/-/raw/master/onyxia-init.sh",
         "singleNamespace": true,
+        "allowNamespaceCreation": false,
         "namespacePrefix": "user-",
         "usernamePrefix": "oidc-",
-        "groupNamespacePrefix": "projet-",
+        "groupNamespacePrefix": "group-",
         "authenticationMode" : "admin",
         "quotas": {
           "allowUserModification": true,
@@ -50,12 +51,12 @@
           "networkPolicy": false
         },
         "expose": {
-          "domain": "fakedomain.kub.example.com",
+          "domain": "dev-onyxia.ssb.no",
           "ingress": true,
           "route": false,
           "istio": {
-            "enabled": false,
-            "gateways": []
+            "enabled": true,
+            "gateways": ["istio-system/dev-onyxia-gateway"]
           }
         },
         "monitoring": {

@@ -1,6 +1,18 @@
 {
   "catalogs": [
     {
+      "id": "ssb",
+      "name": "SSB WIP",
+      "description": "Services for datascientists.",
+      "maintainer": "hnk@ssb.no",
+      "location": "https://johnksv.github.io/helm-charts-interactive-services",
+      "status": "PROD",
+      "highlightedCharts": ["jupyter-python", "rstudio", "vscode-python"],
+      "type": "helm",
+      "skipTlsVerify": false,
+      "caFile": null
+    },
+    {
       "id": "ide",
       "name": "IDE",
       "description": "Services for datascientists.",
