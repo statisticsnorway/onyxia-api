@@ -552,7 +552,15 @@ public class MyLabController {
         boolean skipTlsVerify = catalog.getSkipTlsVerify();
         String caFile = catalog.getCaFile();
         String timeout = catalog.getTimeout();
-
+        fusion.putAll((Map<String, Object>) requestDTO.getOptions());
+        // Substitute userAttribute value with actual value from user's attributes map
+        // This is a hack while we wait for this issue to be fixed:
+        // https://github.com/InseeFrLab/onyxia-web/issues/410
+        if (fusion.containsKey("userAttributes") && fusion.get("userAttributes") != null) {
+            Map<String, Object> props = (Map<String, Object>) fusion.get("userAttributes");
+            props.replace(
+                    "value", user.getAttributes().getOrDefault(props.get("userAttribute"), ""));
+        }
         return helmAppsService.installApp(
                 region,
                 project,
