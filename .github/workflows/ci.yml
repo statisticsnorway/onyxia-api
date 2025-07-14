@@ -102,6 +102,7 @@ jobs:
           context: onyxia-api
           platforms: linux/amd64,linux/arm64
           file: onyxia-api/Dockerfile
+          provenance: false
           push: true
           tags: |
             ${{ steps.metadata.outputs.tags }}
