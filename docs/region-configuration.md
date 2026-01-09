@@ -141,6 +141,14 @@ Note : If you want Onyxia to create the ResourceQuota but not override it at eac
 | `gateways` | []     | List of istio gateways to be used. Should contain at least one element. E.g. `["istio-system/my-gateway"]`   |
 
 
+### Helm properties
+
+It can be used to add additional flags which will be used when installing, resuming and suspending services running Onyxia. 
+
+| Key              | Default | Description                                                                                                                                                                                                                                                                                                                    |
+|------------------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| 
+| `forceConflicts` | false   | If set server-side apply will force changes against conflicts, also see https://helm.sh/docs/helm/helm_upgrade#options . This might be useful if you have mutating webhooks which take ownership of fields, which would normaly result in Helm 4 to fail (see https://helm.sh/community/hips/hip-0023#conflicts-and-forcing ). | 
+
 
 ## Data properties
 
