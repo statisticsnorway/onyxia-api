@@ -9,7 +9,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.8</version>
+        <version>3.5.14</version>
     </parent>
     <modules>
         <module>onyxia-model</module>
@@ -20,7 +20,7 @@
 
     </distributionManagement>
     <properties>
-        <fabric8io.version>7.4.0</fabric8io.version>
+        <fabric8io.version>7.6.1</fabric8io.version>
         <maven.compiler.release>25</maven.compiler.release>
         <java.version>25</java.version>
     </properties>
@@ -66,7 +66,7 @@
                 <plugin>
                     <groupId>com.diffplug.spotless</groupId>
                     <artifactId>spotless-maven-plugin</artifactId>
-                    <version>3.1.0</version>
+                    <version>3.4.0</version>
                     <configuration>
                         <java>
                             <googleJavaFormat>
