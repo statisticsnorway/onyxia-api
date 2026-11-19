@@ -2,12 +2,6 @@ package fr.insee.onyxia.api.dao.universe;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.zafarkhaja.semver.Version;
 import fr.insee.onyxia.api.configuration.CatalogWrapper;
 import fr.insee.onyxia.model.catalog.Pkg;
@@ -18,13 +12,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.zip.GZIPInputStream;
 import okhttp3.CacheControl;
 import okhttp3.Credentials;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
-import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONObject;
@@ -36,6 +30,13 @@ import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
+import tools.jackson.core.StreamReadFeature;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 
 @Service
 public class CatalogLoader {
@@ -82,48 +83,38 @@ public class CatalogLoader {
                                     // Remove explicitly excluded services
                                     entry ->
                                             cw.getExcludedCharts().stream()
-                                                    .noneMatch(
-                                                            excludedChart ->
-                                                                    excludedChart.equalsIgnoreCase(
-                                                                            entry.getKey())))
-                            .filter(
-                                    entry ->
-                                            (CollectionUtils.isEmpty(cw.getIncludeKeywords())
-                                                            || entry.getValue()
-                                                                    .getFirst()
-                                                                    .hasKeywords(
-                                                                            cw
-                                                                                    .getIncludeKeywords()))
-                                                    && (CollectionUtils.isEmpty(
-                                                                    cw.getIncludeAnnotations())
-                                                            || entry.getValue()
-                                                                    .getFirst()
-                                                                    .hasAnnotations(
-                                                                            cw
-                                                                                    .getIncludeAnnotations())))
-                            .filter(
-                                    entry ->
-                                            CollectionUtils.isEmpty(cw.getExcludeKeywords())
-                                                    || !entry.getValue()
+                                                    .noneMatch(excludedChart ->
+                                                            excludedChart.equalsIgnoreCase(
+                                                                    entry.getKey())))
+                            .filter(entry ->
+                                    (CollectionUtils.isEmpty(cw.getIncludeKeywords())
+                                                    || entry.getValue()
                                                             .getFirst()
-                                                            .hasKeywords(cw.getExcludeKeywords()))
-                            .filter(
-                                    entry ->
-                                            CollectionUtils.isEmpty(cw.getExcludeAnnotations())
-                                                    || !entry.getValue()
+                                                            .hasKeywords(cw.getIncludeKeywords()))
+                                            && (CollectionUtils.isEmpty(cw.getIncludeAnnotations())
+                                                    || entry.getValue()
                                                             .getFirst()
                                                             .hasAnnotations(
-                                                                    cw.getExcludeAnnotations()))
+                                                                    cw.getIncludeAnnotations())))
+                            .filter(entry ->
+                                    CollectionUtils.isEmpty(cw.getExcludeKeywords())
+                                            || !entry.getValue()
+                                                    .getFirst()
+                                                    .hasKeywords(cw.getExcludeKeywords()))
+                            .filter(entry ->
+                                    CollectionUtils.isEmpty(cw.getExcludeAnnotations())
+                                            || !entry.getValue()
+                                                    .getFirst()
+                                                    .hasAnnotations(cw.getExcludeAnnotations()))
                             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
             // For each service, filter the multiple versions if needed then refresh remaining
             // versions
             repository.getEntries().values().parallelStream()
-                    .forEach(
-                            charts -> {
-                                sortChartsListByVersion(charts, cw);
-                                epurateChartsList(charts, cw);
-                                refreshChartsList(charts, cw);
-                            });
+                    .forEach(charts -> {
+                        sortChartsListByVersion(charts, cw);
+                        epurateChartsList(charts, cw);
+                        refreshChartsList(charts, cw);
+                    });
             cw.setCatalog(repository);
             cw.setLastUpdateTime(System.currentTimeMillis());
         } catch (Exception e) {
@@ -197,14 +188,13 @@ public class CatalogLoader {
 
     private void refreshChartsList(List<Chart> charts, CatalogWrapper cw) {
         charts.parallelStream()
-                .forEach(
-                        pkg -> {
-                            try {
-                                refreshPackage(cw, pkg);
-                            } catch (CatalogLoaderException | IOException e) {
-                                LOGGER.info("Exception occurred", e);
-                            }
-                        });
+                .forEach(pkg -> {
+                    try {
+                        refreshPackage(cw, pkg);
+                    } catch (CatalogLoaderException | IOException e) {
+                        LOGGER.info("Exception occurred", e);
+                    }
+                });
     }
 
     private void refreshPackage(CatalogWrapper cw, Pkg pkg)
@@ -223,10 +213,9 @@ public class CatalogLoader {
         String chartUrl =
                 chart.getUrls().stream()
                         .findFirst()
-                        .orElseThrow(
-                                () ->
-                                        new CatalogLoaderException(
-                                                "Package " + cw.getName() + " has no urls"));
+                        .orElseThrow(() ->
+                                new CatalogLoaderException(
+                                        "Package " + cw.getName() + " has no urls"));
         String absoluteUrl = chartUrl;
         if (!(chartUrl.startsWith("http") || chartUrl.startsWith("https"))) {
             absoluteUrl = StringUtils.applyRelativePath(cw.getLocation() + "/", chartUrl);
@@ -244,7 +233,9 @@ public class CatalogLoader {
     public void extractDataFromTgz(InputStream in, Chart chart) throws IOException {
         String chartName = chart.getName();
 
-        try (GzipCompressorInputStream gzipIn = new GzipCompressorInputStream(in);
+        // JDK GZIPInputStream skips the gzip "extra" field. commons-compress >= 1.28 parses it
+        // strictly and rejects the non-standard one written by "helm package".
+        try (GZIPInputStream gzipIn = new GZIPInputStream(in);
                 TarArchiveInputStream tarIn = new TarArchiveInputStream(gzipIn)) {
 
             TarArchiveEntry entry;
@@ -254,9 +245,11 @@ public class CatalogLoader {
                 if (entryName.endsWith(chartName + "/values.schema.json")
                         && !entryName.endsWith("charts/" + chartName + "/values.schema.json")) {
                     // TODO : mutualize objectmapper
-                    ObjectMapper mapper = new ObjectMapper();
-                    mapper.configure(JsonParser.Feature.AUTO_CLOSE_SOURCE, false);
-                    mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+                    ObjectMapper mapper =
+                            JsonMapper.builder()
+                                    .disable(StreamReadFeature.AUTO_CLOSE_SOURCE)
+                                    .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                                    .build();
                     try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
                         tarIn.transferTo(baos);
                         chart.setConfig(mapper.readTree(baos.toString(UTF_8)));
@@ -272,8 +265,7 @@ public class CatalogLoader {
         }
     }
 
-    public JsonNode resolveInternalReferences(JsonNode schemaNode, ObjectMapper objectMapper)
-            throws IOException {
+    public JsonNode resolveInternalReferences(JsonNode schemaNode, ObjectMapper objectMapper) {
         // Convert the main schema JSON node to JSONObject
         JSONObject schemaJson = new JSONObject(new JSONTokener(schemaNode.toString()));
 
@@ -301,11 +293,11 @@ public class CatalogLoader {
             ObjectNode objectNode = (ObjectNode) schemaNode;
             Map<String, JsonNode> updates = new HashMap<>();
 
-            Iterator<Map.Entry<String, JsonNode>> fields = objectNode.fields();
+            Iterator<Map.Entry<String, JsonNode>> fields = objectNode.properties().iterator();
             while (fields.hasNext()) {
                 Map.Entry<String, JsonNode> field = fields.next();
-                if (field.getKey().equals("$ref") && field.getValue().isTextual()) {
-                    String ref = field.getValue().asText();
+                if (field.getKey().equals("$ref") && field.getValue().isString()) {
+                    String ref = field.getValue().asString();
                     if (ref.startsWith("#/definitions/")) {
                         String refName = ref.substring("#/definitions/".length());
                         JsonNode refNode = rootNode.at("/definitions/" + refName);
@@ -340,7 +332,7 @@ public class CatalogLoader {
 
     private Map<String, JsonNode> convertToMap(ObjectNode objectNode) {
         Map<String, JsonNode> map = new HashMap<>();
-        Iterator<Map.Entry<String, JsonNode>> fields = objectNode.fields();
+        Iterator<Map.Entry<String, JsonNode>> fields = objectNode.properties().iterator();
         while (fields.hasNext()) {
             Map.Entry<String, JsonNode> field = fields.next();
             map.put(field.getKey(), field.getValue());

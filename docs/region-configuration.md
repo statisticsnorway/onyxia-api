@@ -60,13 +60,15 @@ Users can work on Onyxia as a User or as a Group to which they belong. Each user
 | `groupNamespacePrefix`        | "projet-" | User in a group groupId can access the namespace groupeNamespacePrefix + groupId. This prefix is also used for the Vault group directory.                                                                                                                                                                          |                                                                                                   |
 | `usernamePrefix`              | | If set, the Kubernetes user corresponding to the Onyxia user is named usernamePrefix + userId on impersonation mode, otherwise it is identified only as userId                                                                                                                                                     | "user-"                                                                                           |
 | `groupPrefix`                 | | not used                                                                                                                                                                                                                                                                                                           |                                                                                                   |
-| `authenticationMode`          | serviceAccount | serviceAccount, impersonate or tokenPassthrough : on serviceAccount mode Onyxia API uses its own serviceAccount (by default admin or cluster-admin), with impersonate mode Onyxia requests the API with user's permissions (helm option `--kube-as-user`). With tokenPassthrough, the authentication token is passed to the API server. |                                                                                                   |
+| `authenticationMode`          | serviceAccount | serviceAccount, serviceAccountInTargetNamespace, impersonate or tokenPassthrough : on serviceAccount mode Onyxia API uses its own serviceAccount (by default admin or cluster-admin), with serviceAccountInTargetNamespace mode Onyxia impersonates the service account named `targetNamespaceServiceAccount` created by the onboarding API in each namespace (its own serviceAccount only needs the `impersonate` verb on `serviceaccounts` with that name), with impersonate mode Onyxia requests the API with user's permissions (helm option `--kube-as-user`). With tokenPassthrough, the authentication token is passed to the API server. |                                                                                                   |
+| `targetNamespaceServiceAccount` | onyxia-local | Name of the service account, created by the onboarding API in each namespace, impersonated with serviceAccountInTargetNamespace authentication. | |
 | `expose`                      | | When users request to expose their service, only subdomain of this object domain are allowed                                                                                                                                                                                                                       | See [Expose properties](#expose-properties)                                                       |
 | `monitoring`                  | | Define the URL pattern of the monitoring service that is to be launched with each service. Only for client purposes.                                                                                                                                                                                               | {URLPattern: "https://$NAMESPACE-$INSTANCE.mymonitoring.sspcloud.fr"}                             |                                            |
 | `allowedURIPattern`           | "^https://" | Init scripts set by the user have to respect this pattern.                                                                                                                                                                                                                                                         |                                                                                                   |
 | `server`                      | | Define the configuration of the services provider API server, this value is not served on the API as it contains credentials for the API.                                                                                                                                                                          | See [Server properties](#server-properties)                                                       |
 | `k8sPublicEndpoint`           | | Define external access to Kubernetes API if available. It helps Onyxia users to directly connect to Kubernetes outside the datalab                                                                                                                                                                                 | See [K8sPublicEndpoint properties](#k8sPublicEndpoint-properties)                                 |
 | `quotas`                      | | Properties setting quotas on how many resources a user can get on the services provider.                                                                                                                                                                                                                           | See [Quotas properties](#quotas-properties)                                                       |
+| `helm`                        | | Helm flags used by Onyxia on every `helm upgrade` (install, suspend, resume).                                                                                                                                                                                                                                      | See [Helm properties](#helm-properties)                                                           |
 
 
 
@@ -125,6 +127,7 @@ Note : If you want Onyxia to create the ResourceQuota but not override it at eac
 | `domain`                |       | When users request to expose their service, only the subdomain of this object will be created.                              |
 | `ingress`               | true  | Whether or not Kubernetes Ingress is enabled                                                                                |
 | `route`                 | false | Whether or not OpenShift Route is enabled                                                                                   |
+| `httpRoute`             |       | See [HTTPRoute](#httproute)                                                                                                 |
 | `istio`                 |       | See [Istio](#istio)                                                                                                         |
 | `ingressClassName`      | ''    | Ingress Class Name: useful if you want to use a specific ingress controller instead of a default one                        |
 | `ingressPort`      |     | Optional : define this if your ingress controller does not listen to 80/443 port. If set, the UI will append this port number to the "open service" button link.                        |
@@ -140,6 +143,41 @@ Note : If you want Onyxia to create the ResourceQuota but not override it at eac
 | `enabled`  | false  | Whether or not Istio is enabled                                                                              |
 | `gateways` | []     | List of istio gateways to be used. Should contain at least one element. E.g. `["istio-system/my-gateway"]`   |
 
+
+#### httproute
+
+| Key          | Default | Description                                                                                                                                     |
+|--------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------|
+| `enabled`    | false   | Whether or not Kubernetes Gateway API HTTPRoute support is enabled                                                                              |
+| `parentRefs` | []      | List of parent references to the Gateway configured by the cluster administrator. Must contain at least one element when enabled.             |
+
+Each `parentRefs` entry must define the Gateway `name` and may also define `namespace`, `sectionName`, or `port`. For example:
+
+```json
+{
+  "enabled": true,
+  "parentRefs": [
+    {
+      "name": "shared-gateway",
+      "namespace": "gateway-system",
+      "sectionName": "web"
+    }
+  ]
+}
+```
+
+If `namespace` points to a different namespace than the service namespace, the target Gateway listener must allow routes from that namespace.
+
+When using HTTPRoute, service charts should also set explicit `spec.hostnames` if you want Onyxia to resolve public service URLs for the "Open" action.
+
+
+### Helm properties
+
+It can be used to add additional flags which will be used when installing, resuming and suspending services running Onyxia. 
+
+| Key              | Default | Description                                                                                                                                                                                                                                                                                                                    |
+|------------------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| 
+| `forceConflicts` | false   | If set server-side apply will force changes against conflicts, also see https://helm.sh/docs/helm/helm_upgrade#options . This might be useful if you have mutating webhooks which take ownership of fields, which would normaly result in Helm 4 to fail (see https://helm.sh/community/hips/hip-0023#conflicts-and-forcing ). | 
 
 
 ## Data properties
